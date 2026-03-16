@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>LifeLink Admin Panel</title>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#f4f6f9;
+}
+
+/* SIDEBAR */
+
+.sidebar{
+width:220px;
+height:100vh;
+background:#b30000;
+color:white;
+position:fixed;
+padding-top:20px;
+}
+
+.sidebar h2{
+text-align:center;
+margin-bottom:30px;
+}
+
+.sidebar button{
+width:100%;
+padding:15px;
+border:none;
+background:none;
+color:white;
+text-align:left;
+cursor:pointer;
+font-size:15px;
+}
+
+.sidebar button:hover{
+background:#800000;
+}
+
+/* MAIN */
+
+.main{
+margin-left:220px;
+padding:30px;
+}
+
+.section{
+display:none;
+}
+
+.active{
+display:block;
+}
+
+/* CARDS */
+
+.card{
+background:white;
+padding:20px;
+margin-bottom:15px;
+border-radius:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* TABLE */
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:15px;
+}
+
+th,td{
+padding:10px;
+border-bottom:1px solid #ddd;
+text-align:left;
+}
+
+th{
+background:#eee;
+}
+
+/* BUTTONS */
+
+.approve{
+background:green;
+color:white;
+border:none;
+padding:6px 12px;
+cursor:pointer;
+}
+
+.reject{
+background:red;
+color:white;
+border:none;
+padding:6px 12px;
+cursor:pointer;
+}
+
+.view{
+background:#007bff;
+color:white;
+border:none;
+padding:6px 12px;
+cursor:pointer;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+
+<h2>LifeLink</h2>
+
+<button onclick="showSection('dashboard')">Dashboard</button>
+<button onclick="showSection('donors')">Donor Requests</button>
+<button onclick="showSection('finders')">Finder Requests</button>
+<button onclick="showSection('todo')">TODO (Matches)</button>
+<button onclick="logout()">Logout</button>
+
+</div>
+
+<div class="main">
+
+<!-- DASHBOARD -->
+
+<div id="dashboard" class="section active">
+
+<h2>Dashboard</h2>
+
+<div class="card">Total Donors: <span id="totalDonors">0</span></div>
+<div class="card">Pending Donors: <span id="pendingDonors">0</span></div>
+<div class="card">Finder Requests: <span id="finderCount">0</span></div>
+
+</div>
+
+<!-- DONOR REQUESTS -->
+
+<div id="donors" class="section">
+
+<h2>Donor Requests</h2>
+
+<table>
+
+<tr>
+<th>Name</th>
+<th>Organ</th>
+<th>Blood</th>
+<th>City</th>
+<th>Report</th>
+<th>Status</th>
+<th>Action</th>
+</tr>
+
+<tbody id="donorTable"></tbody>
+
+</table>
+
+</div>
+
+<!-- FINDER REQUESTS -->
+
+<div id="finders" class="section">
+
+<h2>Finder Requests</h2>
+
+<table>
+
+<tr>
+<th>Email</th>
+<th>Organ</th>
+<th>Blood</th>
+<th>City</th>
+<th>Status</th>
+</tr>
+
+<tbody id="finderTable"></tbody>
+
+</table>
+
+</div>
+
+<!-- TODO MATCHES -->
+
+<div id="todo" class="section">
+
+<h2>TODO Matches</h2>
+
+<div id="todoList"></div>
+
+</div>
+
+</div>
+
+<script>
+
+const firebaseConfig = {
+ apiKey: "AIzaSyCa-6Yj4JEklEf7Hc0qhUhFC2Qfqde8Uu0",
+  authDomain: "lifelink-organ-donation.firebaseapp.com",
+  projectId: "lifelink-organ-donation"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/* NAVIGATION */
+
+function showSection(id){
+
+document.querySelectorAll(".section").forEach(sec=>{
+sec.classList.remove("active");
+});
+
+document.getElementById(id).classList.add("active");
+
+}
+
+/* AUTH */
+
+auth.onAuthStateChanged(user=>{
+if(!user){
+window.location="login.html";
+}else{
+loadDashboard();
+loadDonors();
+loadFinders();
+loadTodo();   // ⭐ ADD THIS LINE
+}
+});
+
+/* DASHBOARD */
+
+function loadDashboard(){
+
+db.collection("donors").get().then(snapshot=>{
+
+document.getElementById("totalDonors").innerText=snapshot.size;
+
+let pending=0;
+
+snapshot.forEach(doc=>{
+if(doc.data().status=="pending") pending++;
+});
+
+document.getElementById("pendingDonors").innerText=pending;
+
+});
+
+db.collection("requests").get().then(snapshot=>{
+document.getElementById("finderCount").innerText=snapshot.size;
+});
+
+}
+
+/* DONORS */
+
+function loadDonors(){
+
+db.collection("donors").onSnapshot(snapshot=>{
+
+const table=document.getElementById("donorTable");
+table.innerHTML="";
+
+snapshot.forEach(doc=>{
+
+const d=doc.data();
+
+table.innerHTML+=`
+
+<tr>
+
+<td>${d.name}</td>
+<td>${d.organ}</td>
+<td>${d.bloodGroup}</td>
+<td>${d.city}</td>
+
+<td>
+<button class="view" onclick="window.open('${d.medicalReport}')">
+View
+</button>
+</td>
+
+<td>${d.status}</td>
+
+<td>
+
+<button class="approve"
+onclick="updateStatus('${doc.id}','approved')">
+Approve
+</button>
+
+<button class="reject"
+onclick="updateStatus('${doc.id}','rejected')">
+Reject
+</button>
+
+</td>
+
+</tr>
+
+`;
+
+});
+
+});
+
+}
+
+/* FINDERS */
+
+function loadFinders(){
+
+db.collection("requests").onSnapshot(snapshot=>{
+
+const table=document.getElementById("finderTable");
+table.innerHTML="";
+
+snapshot.forEach(doc=>{
+
+const r=doc.data();
+
+table.innerHTML+=`
+
+<tr>
+
+<td>${r.requesterEmail}</td>
+<td>${r.organ}</td>
+<td>${r.bloodGroup}</td>
+<td>${r.city}</td>
+<td>${r.status}</td>
+
+</tr>
+
+`;
+
+});
+
+});
+
+}
+
+/* TODO MATCHES */
+
+function loadTodo(){
+
+db.collection("requests")
+.where("status","==","approved")
+.onSnapshot(snapshot=>{
+
+const box=document.getElementById("todoList");
+box.innerHTML="";
+
+if(snapshot.empty){
+box.innerHTML="<p>No approved matches yet</p>";
+return;
+}
+
+snapshot.forEach(doc=>{
+
+const r=doc.data();
+
+box.innerHTML+=`
+
+<div class="card">
+
+<h3>Match Found</h3>
+
+<div style="display:flex;justify-content:space-between">
+
+<div>
+
+<h4>Finder</h4>
+
+Name: ${r.requesterEmail}<br>
+Email: ${r.requesterEmail}<br>
+Mobile: ${r.requesterMobile || "Not available"}<br>
+Blood: ${r.bloodGroup}<br>
+City: ${r.city}<br>
+
+</div>
+
+<div>
+
+<h4>Donor</h4>
+
+Name: ${r.donorName}<br>
+Mobile: ${r.donorMobile}<br>
+Blood: ${r.donorBlood}<br>
+City: ${r.donorCity}<br>
+
+</div>
+
+</div>
+
+<hr>
+Admin must contact both parties.
+
+</div>
+
+`;
+
+});
+
+});
+
+}
+
+/* UPDATE STATUS */
+
+function updateStatus(id,status){
+
+db.collection("donors").doc(id).update({
+status:status
+}).then(()=>{
+alert("Donor "+status);
+});
+
+}
+
+/* LOGOUT */
+
+function logout(){
+
+auth.signOut().then(()=>{
+window.location="login.html";
+});
+
+}
+
+</script>
+
+</body>
+</html>
