@@ -385,11 +385,11 @@ box.innerHTML+=`
 
 <h4>Finder</h4>
 
-Name: ${r.requesterEmail}<br>
+Name: ${r.requesterName || "N/A"}<br>
 Email: ${r.requesterEmail}<br>
 Mobile: ${r.requesterMobile || "Not available"}<br>
-Blood: ${r.bloodGroup}<br>
-City: ${r.city}<br>
+Blood: ${r.bloodGroup || r.donorBlood || "N/A"}<br>
+City: ${r.city || r.donorCity || "N/A"}<br>
 
 </div>
 
