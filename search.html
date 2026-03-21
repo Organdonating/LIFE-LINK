@@ -251,14 +251,18 @@ createdAt: firebase.firestore.FieldValue.serverTimestamp()
 
 let selectedDonor = {};
 
-function openPopup(uid,name,organ){
+function openPopup(uid,name,organ,blood,city,mobile){
 
-selectedDonor.uid = uid;
-selectedDonor.name = name;
-selectedDonor.organ = organ;
+selectedDonor = {
+  uid: uid,
+  name: name,
+  organ: organ,
+  bloodGroup: blood,
+  city: city,
+  mobile: mobile
+};
 
 document.getElementById("requestPopup").style.display="flex";
-
 }
 
 function closePopup(){
@@ -277,16 +281,25 @@ return;
 
 db.collection("requests").add({
 
+/* DONOR DETAILS */
 donorUid: selectedDonor.uid,
 donorName: selectedDonor.name,
-organ: selectedDonor.organ,
+donorBlood: selectedDonor.bloodGroup,
+donorCity: selectedDonor.city,
+donorMobile: selectedDonor.mobile,
 
+/* FINDER DETAILS */
 requesterUid: currentUser.uid,
 requesterEmail: currentUser.email,
-requesterName: name,
-requesterMobile: mobile,
+requesterName: document.getElementById("finderName").value,
+requesterMobile: document.getElementById("finderMobile").value,
 
-status:"pending",
+/* MATCH DETAILS */
+organ: selectedDonor.organ,
+bloodGroup: selectedDonor.bloodGroup,
+city: selectedDonor.city,
+
+status: "pending",
 createdAt: firebase.firestore.FieldValue.serverTimestamp()
 
 })
